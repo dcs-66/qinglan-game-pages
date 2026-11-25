@@ -21,14 +21,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download latest game bundle
+      - name: Download latest static site
         run: |
-          curl --fail --location --retry 8 --retry-all-errors --retry-delay 5 --max-time 1800 \
-            "https://roommates-processors-light-bernard.trycloudflare.com/_deploy.zip" \
-            -o game.zip
-          unzip -q game.zip -d site
+          set -euo pipefail
+          mkdir -p site
+          awk '{sub(/\r$/,""); if ($0 != "") {sub(/^\//,""); print "https://qinglan-game.pages.dev/" $0}}' urls.txt > urls.full
+          xargs -n1 -P 8 wget -q --tries=8 --retry-connrefused --timeout=180 --directory-prefix=site < urls.full
+          touch site/.nojekyll
           test -f site/index.html
           grep -q "20261125proc2" site/index.html
+          test -f site/js/data/game-data.js
+          grep -q "mist_beast" site/js/data/game-data.js
+          grep -q "abyss_guardian" site/js/data/game-data.js
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
