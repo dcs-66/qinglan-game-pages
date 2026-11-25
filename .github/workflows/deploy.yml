@@ -26,7 +26,7 @@ jobs:
           set -euo pipefail
           mkdir -p site
           awk '{sub(/\r$/,""); if ($0 != "") {sub(/^\//,""); print "https://qinglan-game.pages.dev/" $0}}' urls.txt > urls.full
-          xargs -n1 -P 8 wget -q --tries=8 --retry-connrefused --timeout=180 --directory-prefix=site < urls.full
+          cat urls.full | xargs -n1 -P 8 -I{} bash -c 'url="$1"; p="${url#https://qinglan-game.pages.dev/}"; mkdir -p "site/$(dirname "$p")"; curl -fsSL --retry 8 --retry-all-errors --retry-delay 3 --max-time 300 "$url" -o "site/$p"' _ {}
           touch site/.nojekyll
           test -f site/index.html
           grep -q "20261125proc2" site/index.html
