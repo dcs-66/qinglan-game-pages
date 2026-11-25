@@ -34,6 +34,9 @@ jobs:
           grep -q "mist_beast" site/js/data/game-data.js
           grep -q "abyss_guardian" site/js/data/game-data.js
 
+      - name: Retire Blacklace hero
+        run: python3 .github/scripts/retire_blacklace.py site
+
       - name: Bundle Draco decoder for GLB hero models
         run: |
           set -euo pipefail
