@@ -34,6 +34,19 @@ jobs:
           grep -q "mist_beast" site/js/data/game-data.js
           grep -q "abyss_guardian" site/js/data/game-data.js
 
+      - name: Bundle Draco decoder for GLB hero models
+        run: |
+          set -euo pipefail
+          dst="site/model_viewer/addons/libs/draco/gltf"
+          mkdir -p "$dst"
+          base="https://threejs.org/examples/jsm/libs/draco/gltf"
+          for f in draco_decoder.js draco_decoder.wasm draco_wasm_wrapper.js; do
+            curl -fsSL --retry 8 --retry-all-errors --retry-delay 3 --max-time 120 "$base/$f" -o "$dst/$f"
+          done
+          test -s "$dst/draco_decoder.js"
+          test -s "$dst/draco_decoder.wasm"
+          test -s "$dst/draco_wasm_wrapper.js"
+
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
         with:
