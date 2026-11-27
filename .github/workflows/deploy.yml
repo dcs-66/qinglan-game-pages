@@ -45,6 +45,54 @@ jobs:
             | base64 -d | gzip -d > /tmp/apply_boss_restore.py
           python3 /tmp/apply_boss_restore.py site
 
+          # 修复宠物高频攻击把 Boss 闪成常白：宠物不触发闪白，且玩家连击时闪白只记录一次原色
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path('site/js/combat/enemy.js')
+          s = p.read_text(encoding='utf-8').replace('\r\n', '\n')
+          s, n_call = re.subn(
+              r'(?m)^(\s*)flashEnemyMesh\(this\.mesh\);',
+              r'\1if (!fromPet) flashEnemyMesh(this.mesh);',
+              s, count=1)
+          new_func = '''function flashEnemyMesh(mesh) {
+            if (!mesh) return;
+            // 连续受击时不能把“当前白色”当成原始色再恢复，否则第二击之后会永久停在白色。
+            // 每只模型只记录一次首次闪白前的原始材质状态；同一轮闪白内重复命中只重置计时器。
+            let st = mesh.userData.__flashState;
+            if (!st || !st.timer) {
+              const mats = [];
+              mesh.traverse(o => { if (o.material && !mats.includes(o.material)) mats.push(o.material); });
+              st = {
+                mats: mats,
+                origs: mats.map(m => m.emissive ? m.emissive.getHex() : null),
+                origInt: mats.map(m => m.emissiveIntensity),
+                timer: null
+              };
+              mesh.userData.__flashState = st;
+            }
+            if (st.timer) clearTimeout(st.timer);
+            st.mats.forEach(m => { if (m.emissive) { m.emissive.setHex(0xffffff); m.emissiveIntensity = 1.1; } });
+            st.timer = setTimeout(() => {
+              st.mats.forEach((m, i) => {
+                if (m.emissive && st.origs[i] !== null) {
+                  m.emissive.setHex(st.origs[i]);
+                  m.emissiveIntensity = st.origInt[i];
+                }
+              });
+              st.timer = null;
+            }, 130);
+          }
+          '''
+          s, n_func = re.subn(r'function flashEnemyMesh\(mesh\) \{.*?\n\}\n', new_func, s, count=1, flags=re.S)
+          if n_call != 1 or n_func != 1:
+            raise SystemExit(f'flash patch mismatch call={n_call} func={n_func}')
+          p.write_text(s, encoding='utf-8', newline='\n')
+          PY
+
+          grep -q "if (!fromPet) flashEnemyMesh(this.mesh);" site/js/combat/enemy.js
+          grep -q "__flashState" site/js/combat/enemy.js
+
           # 慢网下给机械恐龙的附加动作包更长的挂载窗口：主模型可能 30s 后才就绪，
           # 原来 12s 的定时器会提前放弃 dino_extra，导致 Hit/Death 动作缺失。
           sed -i 's/else if (tries > 240)/else if (tries > 1200)/' site/js/ui/asset-wrap.js
