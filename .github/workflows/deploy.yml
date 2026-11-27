@@ -45,6 +45,11 @@ jobs:
             | base64 -d | gzip -d > /tmp/apply_boss_restore.py
           python3 /tmp/apply_boss_restore.py site
 
+          # 慢网下给机械恐龙的附加动作包更长的挂载窗口：主模型可能 30s 后才就绪，
+          # 原来 12s 的定时器会提前放弃 dino_extra，导致 Hit/Death 动作缺失。
+          sed -i 's/else if (tries > 240)/else if (tries > 1200)/' site/js/ui/asset-wrap.js
+          grep -q "tries > 1200" site/js/ui/asset-wrap.js
+
           # 统一开始界面、右下角版本条和所有脚本 ?v= 查询串，避免缓存继续用旧代码
           python3 - <<'PY'
           from pathlib import Path
