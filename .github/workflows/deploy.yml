@@ -57,12 +57,13 @@ jobs:
           grep -q "tries > 1200" site/js/ui/asset-wrap.js
 
 
-          grep -q "BUILD 20261127mechfix" site/index.html
-          grep -q "BUILD 20261127mechfix · 机甲归位" site/index.html
-          grep -q "id: '20261127mechfix'" site/index.html
-          grep -q "model: 'assets/models/mech_warrior.glb'" site/js/data/game-data.js
+          grep -q "BUILD 20261127mechstand" site/index.html
+          grep -q "BUILD 20261127mechstand · 机甲站立" site/index.html
+          grep -q "id: '20261127mechstand'" site/index.html
+          grep -q "aka.doubaocdn.com/s/DimwHxsZKC" site/js/data/game-data.js
           grep -q "model: 'assets/models/boss_guardian.glb'" site/js/data/game-data.js
           grep -q "animMap: { Attack_a: 'Cast'" site/js/data/game-data.js
+          grep -q "id === 'demon_king'" site/js/combat/enemy.js
 
       - name: Bundle Draco decoder for GLB hero models
         run: |
