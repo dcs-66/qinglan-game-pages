@@ -45,52 +45,10 @@ jobs:
             | base64 -d | gzip -d > /tmp/apply_boss_restore.py
           python3 /tmp/apply_boss_restore.py site
 
-          # 修复宠物高频攻击把 Boss 闪成常白：宠物不触发闪白，且玩家连击时闪白只记录一次原色
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-          p = Path('site/js/combat/enemy.js')
-          s = p.read_text(encoding='utf-8').replace('\r\n', '\n')
-          s, n_call = re.subn(
-              r'(?m)^(\s*)flashEnemyMesh\(this\.mesh\);',
-              r'\1if (!fromPet) flashEnemyMesh(this.mesh);',
-              s, count=1)
-          new_func = '''function flashEnemyMesh(mesh) {
-            if (!mesh) return;
-            // 连续受击时不能把“当前白色”当成原始色再恢复，否则第二击之后会永久停在白色。
-            // 每只模型只记录一次首次闪白前的原始材质状态；同一轮闪白内重复命中只重置计时器。
-            let st = mesh.userData.__flashState;
-            if (!st || !st.timer) {
-              const mats = [];
-              mesh.traverse(o => { if (o.material && !mats.includes(o.material)) mats.push(o.material); });
-              st = {
-                mats: mats,
-                origs: mats.map(m => m.emissive ? m.emissive.getHex() : null),
-                origInt: mats.map(m => m.emissiveIntensity),
-                timer: null
-              };
-              mesh.userData.__flashState = st;
-            }
-            if (st.timer) clearTimeout(st.timer);
-            st.mats.forEach(m => { if (m.emissive) { m.emissive.setHex(0xffffff); m.emissiveIntensity = 1.1; } });
-            st.timer = setTimeout(() => {
-              st.mats.forEach((m, i) => {
-                if (m.emissive && st.origs[i] !== null) {
-                  m.emissive.setHex(st.origs[i]);
-                  m.emissiveIntensity = st.origInt[i];
-                }
-              });
-              st.timer = null;
-            }, 130);
-          }
-          '''
-          s, n_func = re.subn(r'function flashEnemyMesh\(mesh\) \{.*?\n\}\n', new_func, s, count=1, flags=re.S)
-          if n_call != 1 or n_func != 1:
-            raise SystemExit(f'flash patch mismatch call={n_call} func={n_func}')
-          p.write_text(s, encoding='utf-8', newline='\n')
-          PY
-
+          # 修复宠物高频攻击把 Boss 闪成常白：宠物不触发闪白；闪白与攻击预警都记录真正底色
+          python3 .github/scripts/patch_flash_base.py site
           grep -q "if (!fromPet) flashEnemyMesh(this.mesh);" site/js/combat/enemy.js
+          grep -q "_baseEmissive" site/js/combat/enemy.js
           grep -q "__flashState" site/js/combat/enemy.js
 
           # 慢网下给机械恐龙的附加动作包更长的挂载窗口：主模型可能 30s 后才就绪，
@@ -98,24 +56,10 @@ jobs:
           sed -i 's/else if (tries > 240)/else if (tries > 1200)/' site/js/ui/asset-wrap.js
           grep -q "tries > 1200" site/js/ui/asset-wrap.js
 
-          # 统一开始界面、右下角版本条和所有脚本 ?v= 查询串，避免缓存继续用旧代码
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-          p = Path('site/index.html')
-          s = p.read_text(encoding='utf-8').replace('\r\n', '\n')
-          s = s.replace('20261125proc2', '20261127bossrestore')
-          s = re.sub(r'(id="start-version"[^>]*>)[^<]*(</div>)',
-                     r'\g<1>BUILD 20261127bossrestore · Boss 模型归位\g<2>', s, count=1)
-          s = re.sub(r'window\.GAME_BUILD\s*=\s*\{.*?\n\s*\};',
-                     "window.GAME_BUILD = {\n    id: '20261127bossrestore',\n    time: '2026-11-27 12:12',\n    label: 'Boss 模型归位',\n    note: '四脚兽 / 机甲观音 / 机甲战士 / 机械恐龙归位'\n  };",
-                     s, count=1, flags=re.S)
-          p.write_text(s, encoding='utf-8', newline='\n')
-          PY
 
-          grep -q "BUILD 20261127bossrestore" site/index.html
-          grep -q "BUILD 20261127bossrestore · Boss 模型归位" site/index.html
-          grep -q "id: '20261127bossrestore'" site/index.html
+          grep -q "BUILD 20261127bossflash" site/index.html
+          grep -q "BUILD 20261127bossflash · 闪白修复" site/index.html
+          grep -q "id: '20261127bossflash'" site/index.html
           grep -q "model: 'assets/models/mech_warrior.glb'" site/js/data/game-data.js
           grep -q "model: 'assets/models/boss_guardian.glb'" site/js/data/game-data.js
           grep -q "animMap: { Attack_a: 'Cast'" site/js/data/game-data.js
