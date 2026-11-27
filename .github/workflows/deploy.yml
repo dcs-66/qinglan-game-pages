@@ -29,13 +29,22 @@ jobs:
           cat urls.full | xargs -n1 -P 8 -I{} bash -c 'url="$1"; p="${url#https://qinglan-game.pages.dev/}"; mkdir -p "site/$(dirname "$p")"; curl -fsSL --retry 8 --retry-all-errors --retry-delay 3 --max-time 300 "$url" -o "site/$p"' _ {}
           touch site/.nojekyll
           test -f site/index.html
-          grep -q "20261125proc2" site/index.html
           test -f site/js/data/game-data.js
           grep -q "mist_beast" site/js/data/game-data.js
           grep -q "abyss_guardian" site/js/data/game-data.js
 
       - name: Retire Blacklace hero
         run: python3 .github/scripts/retire_blacklace.py site
+
+      - name: Apply Boss model restore
+        run: |
+          set -euo pipefail
+          base64 -d .github/scripts/apply_boss_restore.py.gz.b64 | gzip -d > /tmp/apply_boss_restore.py
+          python3 /tmp/apply_boss_restore.py site
+          grep -q "BUILD 20261127bossrestore" site/index.html
+          grep -q "model: 'assets/models/mech_warrior.glb'" site/js/data/game-data.js
+          grep -q "model: 'assets/models/boss_guardian.glb'" site/js/data/game-data.js
+          grep -q "animMap: { Attack_a: 'Cast'" site/js/data/game-data.js
 
       - name: Bundle Draco decoder for GLB hero models
         run: |
