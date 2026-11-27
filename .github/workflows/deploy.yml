@@ -57,9 +57,9 @@ jobs:
           grep -q "tries > 1200" site/js/ui/asset-wrap.js
 
 
-          grep -q "BUILD 20261127bossflash" site/index.html
-          grep -q "BUILD 20261127bossflash · 闪白修复" site/index.html
-          grep -q "id: '20261127bossflash'" site/index.html
+          grep -q "BUILD 20261127mechfix" site/index.html
+          grep -q "BUILD 20261127mechfix · 机甲归位" site/index.html
+          grep -q "id: '20261127mechfix'" site/index.html
           grep -q "model: 'assets/models/mech_warrior.glb'" site/js/data/game-data.js
           grep -q "model: 'assets/models/boss_guardian.glb'" site/js/data/game-data.js
           grep -q "animMap: { Attack_a: 'Cast'" site/js/data/game-data.js

@@ -86,19 +86,37 @@ if 'const origs = mats.map' in s:
 
 p.write_text(s, encoding='utf-8', newline='\n')
 
+# 机甲战士（断塔·蚀冠）放倒修复：
+# mech_warrior.glb 的骨架根节点已经带 +90° X 轴转换，原来的 modelRotX: -Math.PI/2
+# 又会把它整体放倒，实战里只剩镰刀和披风露出地面。这里精确移除这一处覆盖。
+gp = site / 'js' / 'data' / 'game-data.js'
+if gp.exists():
+    g = gp.read_text(encoding='utf-8')
+    mech_line_re = re.compile(
+        r"(model:\s*'assets/models/mech_warrior\.glb',\s*modelH:\s*4\.4,\s*skipPreload:\s*true,\s*modelNoCenter:\s*true,\s*)modelRotX:\s*-Math\.PI\s*/\s*2,\s*",
+        re.S,
+    )
+    g, n_mech = mech_line_re.subn(r"\1", g, count=1)
+    if n_mech != 1:
+        # 如果下载到的版本已经修过，允许幂等通过；但如果还有这处旋转就必须报错。
+        if 'modelRotX: -Math.PI / 2' in g and "assets/models/mech_warrior.glb" in g:
+            raise SystemExit(f'mech rotation fix count={n_mech}')
+    gp.write_text(g, encoding='utf-8', newline='\n')
+    print(f'patched mech rotation: {n_mech} change(s)')
+
 # 同步版本串：旧 Cloudflare 构建仍是 20261125proc2，apply_boss 脚本会先写成 bossrestore。
-BUILD = '20261127bossflash'
+BUILD = '20261127mechfix'
 ip = site / 'index.html'
 if ip.exists():
     h = ip.read_text(encoding='utf-8')
-    h = h.replace('20261125proc2', BUILD).replace('20261127bossrestore', BUILD)
+    h = h.replace('20261125proc2', BUILD).replace('20261127bossrestore', BUILD).replace('20261127bossflash', BUILD)
     h = re.sub(r'(id="start-version"[^>]*>)[^<]*(</div>)',
-               r'\g<1>BUILD 20261127bossflash · 闪白修复\g<2>', h, count=1)
+               r'\g<1>BUILD 20261127mechfix · 机甲归位\g<2>', h, count=1)
     game_build = '''window.GAME_BUILD = {
-    id: '20261127bossflash',
-    time: '2026-11-27 15:13',
-    label: '闪白修复',
-    note: 'Boss 模型归位保留 · 宠物攻击不再触发闪白，连击也能恢复原色'
+    id: '20261127mechfix',
+    time: '2026-11-27 19:10',
+    label: '机甲归位',
+    note: 'Boss 模型归位保留 · 宠物攻击不再触发闪白 · 机甲战士不再放倒'
   };'''
     h = re.sub(r'window\.GAME_BUILD\s*=\s*\{[\s\S]*?\};', game_build, h, count=1)
     ip.write_text(h, encoding='utf-8', newline='\n')
