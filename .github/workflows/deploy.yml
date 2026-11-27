@@ -39,9 +39,30 @@ jobs:
       - name: Apply Boss model restore
         run: |
           set -euo pipefail
-          base64 -d .github/scripts/apply_boss_restore.py.gz.b64 | gzip -d > /tmp/apply_boss_restore.py
+          # 使用首次成功部署时固定下来的补丁脚本（不可变提交，避免仓库内脚本被误改）
+          curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 \
+            "https://raw.githubusercontent.com/dcs-66/qinglan-game-pages/5a0f4f5eb01c945cc5f1cbcf7f3462c222158cec/.github/scripts/apply_boss_restore.py.gz.b64" \
+            | base64 -d | gzip -d > /tmp/apply_boss_restore.py
           python3 /tmp/apply_boss_restore.py site
+
+          # 统一开始界面、右下角版本条和所有脚本 ?v= 查询串，避免缓存继续用旧代码
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path('site/index.html')
+          s = p.read_text(encoding='utf-8').replace('\r\n', '\n')
+          s = s.replace('20261125proc2', '20261127bossrestore')
+          s = re.sub(r'(id="start-version"[^>]*>)[^<]*(</div>)',
+                     r'\g<1>BUILD 20261127bossrestore · Boss 模型归位\g<2>', s, count=1)
+          s = re.sub(r'window\.GAME_BUILD\s*=\s*\{.*?\n\s*\};',
+                     "window.GAME_BUILD = {\n    id: '20261127bossrestore',\n    time: '2026-11-27 12:12',\n    label: 'Boss 模型归位',\n    note: '四脚兽 / 机甲观音 / 机甲战士 / 机械恐龙归位'\n  };",
+                     s, count=1, flags=re.S)
+          p.write_text(s, encoding='utf-8', newline='\n')
+          PY
+
           grep -q "BUILD 20261127bossrestore" site/index.html
+          grep -q "BUILD 20261127bossrestore · Boss 模型归位" site/index.html
+          grep -q "id: '20261127bossrestore'" site/index.html
           grep -q "model: 'assets/models/mech_warrior.glb'" site/js/data/game-data.js
           grep -q "model: 'assets/models/boss_guardian.glb'" site/js/data/game-data.js
           grep -q "animMap: { Attack_a: 'Cast'" site/js/data/game-data.js
