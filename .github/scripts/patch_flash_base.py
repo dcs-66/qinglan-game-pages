@@ -90,6 +90,8 @@ p.write_text(s, encoding='utf-8', newline='\n')
 # mech_warrior.glb 的 Mech_Take 长镜是“拆甲/变形”素材，直接当 idle/登场会随机把机身拆散，
 # 实战里只剩镰刀和披风（用户看到“突然出现、只看见一部分”）。这里改用 Blender 绑定姿势
 # 烘焙出的静态全身 GLB，彻底绕开长镜；水平居中、按目标高度落地，不再靠猜旋转/偏移。
+# 注意：源文件里 demon_king 出现两次（基础 ENEMY_DEFS + 末尾 Object.assign 覆盖），
+# 两处都必须替换，否则末尾覆盖会把静态模型再改回会拆甲的 mech_warrior.glb。
 gp = site / 'js' / 'data' / 'game-data.js'
 if gp.exists():
     g = gp.read_text(encoding='utf-8')
@@ -99,8 +101,8 @@ if gp.exists():
     // 绑定姿势静态全身模型：避开 Mech_Take 拆甲长镜，祭坛上不会再只剩镰刀/披风
     model: 'https://aka.doubaocdn.com/s/DimwHxsZKC', modelH: 4.4, skipPreload: true,
   },"""
-    g, n_block = re.subn(r"  demon_king: \{[\s\S]*?\n  \},", new_block, g, count=1)
-    if n_block != 1:
+    g, n_block = re.subn(r"  demon_king: \{[\s\S]*?\n  \},", new_block, g, count=2)
+    if n_block != 2:
         raise SystemExit(f'demon_king block replace count={n_block}')
     gp.write_text(g, encoding='utf-8', newline='\n')
     print(f'patched demon_king static body: {n_block} block(s)')
