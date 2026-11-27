@@ -89,17 +89,20 @@ p.write_text(s, encoding='utf-8', newline='\n')
 # 机甲战士（断塔·蚀冠）最终修复：
 # mech_warrior.glb 的 Mech_Take 长镜是“拆甲/变形”素材，直接当 idle/登场会随机把机身拆散，
 # 实战里只剩镰刀和披风（用户看到“突然出现、只看见一部分”）。这里改用 Blender 在
-# Mech_Take 第 140 帧烘焙出的静态站姿 GLB，彻底绕开长镜；按目标高度落地，不再靠猜旋转/偏移。
+# Mech_Take 第 161 帧烘焙出的静态站姿 GLB，彻底绕开长镜；并按目标高度落地。
 # 注意：源文件里 demon_king 出现两次（基础 ENEMY_DEFS + 末尾 Object.assign 覆盖），
 # 两处都必须替换，否则末尾覆盖会把静态模型再改回会拆甲的 mech_warrior.glb。
 gp = site / 'js' / 'data' / 'game-data.js'
 if gp.exists():
     g = gp.read_text(encoding='utf-8')
+    # 出生点从东侧石柱后移到祭坛正前方，玩家从北侧进场就能看见整只机甲，不再被柱子挡住。
+    g = g.replace("spawns: [{ id: 'demon_king', count: 1, pos: { dx: 20, dz: 6 } }],",
+                  "spawns: [{ id: 'demon_king', count: 1, pos: { dx: 10, dz: -4 } }],")
     new_block = """  demon_king: {
     name: '断塔·蚀冠', hp: 350, attack: 28, gold: 300, exp: 200, color: 0xee0000,
     isBoss: true, speed: 1.5, atkRange: 2.5, atkCD: 1400, weakY: 3.5, aiType: 'summoner',
-    // 第 140 帧静态站姿：避开 Mech_Take 拆甲长镜，机甲全身完整站在祭坛上
-    model: 'https://aka.doubaocdn.com/s/JbhShktA3r', modelH: 4.4, skipPreload: true,
+    // 第 161 帧静态站姿：避开 Mech_Take 拆甲长镜，机甲全身完整站在祭坛正前方
+    model: 'https://aka.doubaocdn.com/s/uB0xpNe1HG', modelH: 4.4, skipPreload: true,
   },"""
     g, n_block = re.subn(r"  demon_king: \{[\s\S]*?\n  \},", new_block, g, count=2)
     if n_block != 2:
@@ -129,18 +132,18 @@ if ep.exists():
     print('patched demon_king boss light')
 
 # 同步版本串：旧 Cloudflare 构建仍是 20261125proc2，apply_boss 脚本会先写成 bossrestore。
-BUILD = '20261127mechidle'
+BUILD = '20261127mechidle2'
 ip = site / 'index.html'
 if ip.exists():
     h = ip.read_text(encoding='utf-8')
-    h = h.replace('20261125proc2', BUILD).replace('20261127bossrestore', BUILD).replace('20261127bossflash', BUILD).replace('20261127mechfix', BUILD).replace('20261127mechstand', BUILD)
+    h = h.replace('20261125proc2', BUILD).replace('20261127bossrestore', BUILD).replace('20261127bossflash', BUILD).replace('20261127mechfix', BUILD).replace('20261127mechidle', BUILD)
     h = re.sub(r'(id="start-version"[^>]*>)[^<]*(</div>)',
-               r'\g<1>BUILD 20261127mechidle · 机甲站姿\g<2>', h, count=1)
+               r'\g<1>BUILD 20261127mechidle2 · 机甲站姿·正面\g<2>', h, count=1)
     game_build = '''window.GAME_BUILD = {
-    id: '20261127mechidle',
-    time: '2026-11-27 20:05',
-    label: '机甲站姿',
-    note: 'Boss 改用 Mech_Take 第140帧静态站姿 · 全身完整 · 近身冷光补轮廓'
+    id: '20261127mechidle2',
+    time: '2026-11-27 20:20',
+    label: '机甲站姿·正面',
+    note: 'Boss 改用第161帧静态站姿 · 移到祭坛正前方 · 近身冷光补轮廓'
   };'''
     h = re.sub(r'window\.GAME_BUILD\s*=\s*\{[\s\S]*?\};', game_build, h, count=1)
     ip.write_text(h, encoding='utf-8', newline='\n')
